@@ -4,8 +4,8 @@ from abc import ABC
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import integrate
 from scipy.fft import rfft, rfftfreq
+from scipy.integrate import simps
 
 
 class Signal(ABC):
@@ -96,11 +96,17 @@ class FrequencyModulation(Modulation):
         self.count_spectrum()
 
     def count_signal(self):
-        # signal = 1 * np.sin(2 * math.pi * 2 * self.main_signal.time_interval)
-        b = 3
+        k = 300
 
-        self.result_signal.signal = np.sin(2 * math.pi * self.main_signal.frequency * self.main_signal.time_interval
-                                           + b * self.modeling_signal.signal)
+        modeling_int = [0, ]
+        for i in range(1, len(self.modeling_signal.time_interval)):
+            modeling_int.append(simps(self.modeling_signal.signal[:i], self.modeling_signal.time_interval[:i]))
+
+        s_FM = []
+        for (ti, m) in zip(self.modeling_signal.time_interval, modeling_int):
+            s_FM.append(self.main_signal.amplitude * math.sin(2 * math.pi * self.main_signal.frequency * ti + k * m))
+
+        self.result_signal.signal = np.array(s_FM)
 
         self.result_signal.time_interval = self.main_signal.time_interval
 
@@ -192,10 +198,10 @@ class DrawSignal:
         self.__draw_plots_modulation(Hs, Ds, modulation)
 
     def draw_frequency_modulation_signal(self):
-        Hs = HarmonicSignal(start_time=0, end_time=0.5, time_step=0.001,
-                            frequency=100, amplitude=1)
-        Ds = DigitalSignal(start_time=0, end_time=0.5, time_step=0.001,
-                           frequency=10, amplitude=0.2)
+        Hs = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
+                            frequency=30, amplitude=1)
+        Ds = DigitalSignal(start_time=0, end_time=1, time_step=0.001,
+                           frequency=10, amplitude=1)
 
         modulation = FrequencyModulation(main_signal=Hs, modeling_signal=Ds)
 
