@@ -4,7 +4,8 @@ from abc import ABC
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.fft import rfft, rfftfreq
+from numpy.fft import fftfreq
+from scipy.fft import rfft, rfftfreq, fft
 from scipy.integrate import simps
 
 
@@ -12,8 +13,8 @@ class Signal(ABC):
 
     def __init__(self, **kwargs):
         try:
-            self.frequencies = None
-            self.fft_result_signal = None
+            self.r_frequencies = None
+            self.rfft_result_spectrum = None
             self.signal = None
             self.time_interval = None
             self.start_time = kwargs['start_time']
@@ -21,6 +22,8 @@ class Signal(ABC):
             self.time_step = kwargs['time_step']
             self.frequency = kwargs['frequency']
             self.amplitude = kwargs['amplitude']
+            self.fft_result_spectrum = None
+            self.frequencies = None
         except KeyError:
             print("unexpected key")
 
@@ -28,20 +31,28 @@ class Signal(ABC):
         """""count signal values"""""
         pass
 
-    def count_spectrum(self):
-        """""count spectrum of current signal, can be override"""""
-        fft_result_signal = rfft(self.signal)
-        frequencies = rfftfreq(len(self.time_interval), self.time_step)
+    def count_r_spectrum(self):
+        """""count r_spectrum of current signal, can be override"""""
+        r_spectrum = rfft(self.signal)
+        freqs = rfftfreq(len(self.time_interval), self.time_step)
 
-        self.fft_result_signal = fft_result_signal
-        self.frequencies = frequencies
+        self.rfft_result_spectrum = r_spectrum
+        self.r_frequencies = freqs
+
+    def count_full_spectrum(self):
+        """""count full spectrum of current signal, can be override"""""
+        spectrum = fft(self.signal)
+        freqs = fftfreq(len(self.time_interval), self.time_step)
+
+        self.fft_result_spectrum = spectrum
+        self.frequencies = freqs
 
 
 class DigitalSignal(Signal):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.count_signal_function()
-        self.count_spectrum()
+        self.count_r_spectrum()
 
     def count_signal_function(self):
         time_interval = np.arange(self.start_time, self.end_time, self.time_step)
@@ -61,7 +72,7 @@ class HarmonicSignal(Signal):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.count_signal_function()
-        self.count_spectrum()
+        self.count_r_spectrum()
 
     def count_signal_function(self):
         time_interval = np.arange(self.start_time, self.end_time, self.time_step)
@@ -77,9 +88,12 @@ class Modulation:
         try:
             self.main_signal = kwargs['main_signal']
             self.modeling_signal = kwargs['modeling_signal']
-            self.result_signal = Signal(start_time=self.main_signal.start_time, end_time=self.main_signal.end_time,
-                                        time_step=self.main_signal.time_step,
-                                        frequency=self.main_signal.frequency, amplitude=0)
+            self.modulated_result_signal = Signal(start_time=self.main_signal.start_time,
+                                                  end_time=self.main_signal.end_time,
+                                                  time_step=self.main_signal.time_step,
+                                                  frequency=self.main_signal.frequency, amplitude=0)
+            self.synthesized_signal = None
+            self.filtered_signal = None
 
         except KeyError:
             print("Key not found")
@@ -88,12 +102,61 @@ class Modulation:
         """""count signal values"""""
         pass
 
+    def count_r_spectrum(self):
+        self.modulated_result_signal.count_r_spectrum()
+
+    def count_full_spectrum(self):
+        self.modulated_result_signal.count_full_spectrum()
+
+    def cut_r_spectrum(self):
+        min_index = np.argmin(np.abs(self.modulated_result_signal.rfft_result_spectrum))
+        max_index = np.argmax(np.abs(self.modulated_result_signal.rfft_result_spectrum))
+
+        self.modulated_result_signal.rfft_result_spectrum[min_index] = 0
+        self.modulated_result_signal.rfft_result_spectrum[max_index] = 0
+
+    def cut_full_spectrum(self):
+        min_index = np.argmin(np.abs(self.modulated_result_signal.fft_result_spectrum))
+        max_index = np.argmax(np.abs(self.modulated_result_signal.fft_result_spectrum))
+
+        self.modulated_result_signal.fft_result_spectrum[min_index] = 0
+        self.modulated_result_signal.fft_result_spectrum[max_index] = 0
+
+    def spectrum_synthesys(self):
+        self.synthesized_signal = Signal(start_time=self.modulated_result_signal.start_time,
+                                         end_time=self.modulated_result_signal.end_time,
+                                         time_step=self.modulated_result_signal.time_step,
+                                         frequency=self.modulated_result_signal.frequency, amplitude=0)
+
+        self.synthesized_signal.signal = np.fft.ifft(self.modulated_result_signal.fft_result_spectrum).real
+        self.synthesized_signal.time_interval = self.modulated_result_signal.time_interval
+
+
+class PhaseModulation(Modulation):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.count_signal()
+        self.count_r_spectrum()
+        self.cut_r_spectrum()
+        self.spectrum_synthesys()
+
+    def count_signal(self):
+        k = 20
+
+        self.modulated_result_signal.signal = self.main_signal.amplitude * np.cos(2 * math.pi *
+                                                                                  self.main_signal.frequency
+                                                                                  * self.main_signal.time_interval + k * self.modeling_signal.signal)
+
+        self.modulated_result_signal.time_interval = self.main_signal.time_interval
+
 
 class FrequencyModulation(Modulation):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.count_signal()
-        self.count_spectrum()
+        self.count_r_spectrum()
+        self.cut_r_spectrum()
+        self.spectrum_synthesys()
 
     def count_signal(self):
         k = 300
@@ -106,30 +169,44 @@ class FrequencyModulation(Modulation):
         for (ti, m) in zip(self.modeling_signal.time_interval, modeling_int):
             s_FM.append(self.main_signal.amplitude * math.sin(2 * math.pi * self.main_signal.frequency * ti + k * m))
 
-        self.result_signal.signal = np.array(s_FM)
+        self.modulated_result_signal.signal = np.array(s_FM)
 
-        self.result_signal.time_interval = self.main_signal.time_interval
-
-    def count_spectrum(self):
-        self.result_signal.count_spectrum()
+        self.modulated_result_signal.time_interval = self.main_signal.time_interval
 
 
 class AmplitudeModulation(Modulation):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.count_signal()
-        self.count_spectrum()
+        self.count_r_spectrum()
+        self.count_full_spectrum()
+        self.cut_r_spectrum()
+        self.cut_full_spectrum()
+        self.spectrum_synthesys()
+        self.filter_signal()
 
     def count_signal(self):
-        # signal = 1 * np.sin(2 * math.pi * 2 * self.main_signal.time_interval)
+        # self.modulated_result_signal.signal = self.main_signal.signal * (
+        #         1 + self.modeling_signal.signal / self.main_signal.amplitude)
 
-        self.result_signal.signal = self.main_signal.signal * (
-                1 + self.modeling_signal.signal / self.main_signal.amplitude)
+        self.modulated_result_signal.signal = self.main_signal.signal * self.modeling_signal.signal
 
-        self.result_signal.time_interval = self.main_signal.time_interval
+        self.modulated_result_signal.time_interval = self.main_signal.time_interval
 
-    def count_spectrum(self):
-        self.result_signal.count_spectrum()
+    def filter_signal(self):
+        self.filtered_signal = Signal(start_time=self.modulated_result_signal.start_time,
+                                      end_time=self.modulated_result_signal.end_time,
+                                      time_step=self.modulated_result_signal.time_step,
+                                      frequency=self.modulated_result_signal.frequency, amplitude=0)
+
+        y = np.zeros_like(self.synthesized_signal.signal)
+        win = 100
+        for i in range(len(self.synthesized_signal.signal) - win + 1):
+            y[i] = np.mean(self.synthesized_signal.signal[i:i + win])
+        s = np.mean(y)
+        self.filtered_signal.signal = np.array([1 if i >= s else 0 for i in y])
+
+        self.filtered_signal.time_interval = self.synthesized_signal.time_interval
 
 
 class DrawSignal:
@@ -171,27 +248,37 @@ class DrawSignal:
 
         axs[0, 0].plot(signal1Hz.time_interval, signal1Hz.signal)
         axs[0, 1].set_xlim(0, 50)
-        axs[0, 1].plot(signal1Hz.frequencies, np.abs(signal1Hz.fft_result_signal))
+        axs[0, 1].plot(signal1Hz.r_frequencies, np.abs(signal1Hz.rfft_result_spectrum))
 
         axs[1, 0].plot(signal2Hz.time_interval, signal2Hz.signal)
         axs[1, 1].set_xlim(0, 50)
-        axs[1, 1].plot(signal2Hz.frequencies, np.abs(signal2Hz.fft_result_signal))
+        axs[1, 1].plot(signal2Hz.r_frequencies, np.abs(signal2Hz.rfft_result_spectrum))
 
         axs[2, 0].plot(signal4Hz.time_interval, signal4Hz.signal)
         axs[2, 1].set_xlim(0, 50)
-        axs[2, 1].plot(signal4Hz.frequencies, np.abs(signal4Hz.fft_result_signal))
+        axs[2, 1].plot(signal4Hz.r_frequencies, np.abs(signal4Hz.rfft_result_spectrum))
 
         axs[3, 0].plot(signal8Hz.time_interval, signal8Hz.signal)
         axs[3, 1].set_xlim(0, 50)
-        axs[3, 1].plot(signal8Hz.frequencies, np.abs(signal8Hz.fft_result_signal))
+        axs[3, 1].plot(signal8Hz.r_frequencies, np.abs(signal8Hz.rfft_result_spectrum))
 
         plt.show()
 
+    def draw_phase_modulation_signal(self):
+        Hs = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
+                            frequency=30, amplitude=1)
+        Ds = DigitalSignal(start_time=0, end_time=1, time_step=0.001,
+                           frequency=3, amplitude=1)
+
+        modulation = PhaseModulation(main_signal=Hs, modeling_signal=Ds)
+
+        self.__draw_plots_modulation(Hs, Ds, modulation)
+
     def draw_amplitude_modulation_signal(self):
         Hs = HarmonicSignal(start_time=0, end_time=5, time_step=0.001,
-                            frequency=30, amplitude=1)
+                            frequency=15, amplitude=1)
         Ds = DigitalSignal(start_time=0, end_time=5, time_step=0.001,
-                           frequency=2, amplitude=0.2)
+                           frequency=3, amplitude=0.2)
 
         modulation = AmplitudeModulation(main_signal=Hs, modeling_signal=Ds)
 
@@ -209,17 +296,22 @@ class DrawSignal:
 
     @staticmethod
     def __draw_plots_modulation(main_signal: Signal, modeling_signal: Signal, modulation: Modulation):
-        fig, axs = plt.subplots(nrows=3, ncols=1)
+        fig, axs = plt.subplots(nrows=6, ncols=1)
         fig.set_size_inches(15, 6)
 
         axs[0].plot(main_signal.time_interval, main_signal.signal)
 
         axs[1].plot(modeling_signal.time_interval, modeling_signal.signal)
 
-        axs[2].plot(modulation.result_signal.time_interval, modulation.result_signal.signal)
+        axs[2].plot(modulation.modulated_result_signal.time_interval, modulation.modulated_result_signal.signal)
 
-        # axs[3].plot(modulation.result_signal.frequencies, np.abs(modulation.result_signal.fft_result_signal))
-        # axs[3].set_xlim(0, 50)
+        axs[3].plot(modulation.modulated_result_signal.r_frequencies,
+                    np.abs(modulation.modulated_result_signal.rfft_result_spectrum))
+        axs[3].set_xlim(0, 50)
+
+        axs[4].plot(modulation.synthesized_signal.time_interval, modulation.synthesized_signal.signal)
+
+        axs[5].plot(modulation.filtered_signal.time_interval, modulation.filtered_signal.signal)
 
         plt.show()
 
@@ -242,16 +334,16 @@ class Window:
                                                 command=draw.draw_frequency_modulation_signal,
                                                 background="light green")
 
+        button_phase_modulation = tk.Button(self.root, text="Draw phase modulation",
+                                            command=draw.draw_phase_modulation_signal,
+                                            background="light blue")
+
         button_amplitude_modulation.pack()
         button_frequency_modulation.pack()
+        button_phase_modulation.pack()
 
     def start(self):
         self.root.mainloop()
-
-
-# При частотной модуляции
-# (ЧМ, англ. FM - Frequency Modulation) несущий сигнал является более высокочастотным по отношению к информационному сигналу и амплитуда частотно-модулированного сигнала является неизменной.
-# Частотно модулированный сигнал отличается высокой помехозащищенностью и используется для высококачественной передачи информации: в радиовещании, телевидении, радиотелефонии и др.
 
 
 window = Window()
