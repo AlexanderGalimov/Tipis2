@@ -46,29 +46,27 @@ class DataProcessor:
         self.digital_signals.append(Ds_8Hz)
 
     def init_task2(self):
-        ampl_Hs = HarmonicSignal(start_time=0, end_time=5, time_step=0.001,
-                                 frequency=15, amplitude=2)
-        ampl_Ds = DigitalSignal(start_time=0, end_time=5, time_step=0.001,
-                                frequency=3, amplitude=1)
+        ampl_Hs = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
+                                 frequency=64, amplitude=2)
+        ampl_Ds = DigitalSignal(start_time=0, end_time=1, time_step=0.001,
+                                frequency=4, amplitude=1)
 
         ampl_modulation = AmplitudeModulation(main_signal=ampl_Hs, modeling_signal=ampl_Ds)
 
         freq_Hs = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
-                                 frequency=50, amplitude=1)
+                                 frequency=64, amplitude=1)
         freq_Ds = DigitalSignal(start_time=0, end_time=1, time_step=0.001,
-                                frequency=5, amplitude=1)
+                                frequency=4, amplitude=1)
 
         freq_modulation = FrequencyModulation(main_signal=freq_Hs, modeling_signal=freq_Ds)
 
         phase_Hs = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
-                                  frequency=30, amplitude=1)
+                                  frequency=64, amplitude=1)
         phase_Ds = DigitalSignal(start_time=0, end_time=1, time_step=0.001,
-                                 frequency=3, amplitude=1)
+                                 frequency=4, amplitude=1)
 
         phase_modulation = PhaseModulation(main_signal=phase_Hs, modeling_signal=phase_Ds)
 
         self.modulations = {"amplitude_modulation": ampl_modulation,
                             "frequency_modulation": freq_modulation,
                             "phase_modulation": phase_modulation}
-
-

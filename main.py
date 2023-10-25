@@ -3,9 +3,9 @@ import tkinter as tk
 import numpy as np
 from matplotlib import pyplot as plt
 
+from data_processor import DataProcessor
 from modulation import PhaseModulation, AmplitudeModulation, FrequencyModulation
 from signals import Signal
-from task_processor import DataProcessor
 
 
 class DrawSignal:
@@ -64,13 +64,19 @@ class DrawSignal:
                                 phase_modulation: PhaseModulation):
         fig, axs = plt.subplots(nrows=3, ncols=1)
         fig.set_size_inches(15, 6)
+        fig.suptitle("модуляция")
 
         axs[0].plot(ampl_modulation.modulated_result_signal.time_interval,
                     ampl_modulation.modulated_result_signal.signal)
+        axs[0].set_ylabel("ам")
+
         axs[1].plot(freq_modulation.modulated_result_signal.time_interval,
                     freq_modulation.modulated_result_signal.signal)
+        axs[1].set_ylabel("чм")
+
         axs[2].plot(phase_modulation.modulated_result_signal.time_interval,
                     phase_modulation.modulated_result_signal.signal)
+        axs[2].set_ylabel("фм")
 
         plt.show()
 
@@ -78,6 +84,7 @@ class DrawSignal:
     def __draw_plots_synth_signal(synth_signal: Signal):
         fig, axs = plt.subplots(nrows=1, ncols=1)
         fig.set_size_inches(15, 3)
+        fig.suptitle("синтезированный сигнал")
 
         axs.plot(synth_signal.time_interval, synth_signal.signal)
 
@@ -87,6 +94,7 @@ class DrawSignal:
     def __draw_plots_filtered_signal(filtered_signal: Signal):
         fig, axs = plt.subplots(nrows=1, ncols=1)
         fig.set_size_inches(15, 3)
+        fig.suptitle("отфильтрованный сигнал")
 
         axs.plot(filtered_signal.time_interval, filtered_signal.signal)
 
@@ -97,18 +105,22 @@ class DrawSignal:
                                          phase_modulation: PhaseModulation):
         fig, axs = plt.subplots(nrows=3, ncols=1)
         fig.set_size_inches(15, 6)
+        fig.suptitle("спектры")
 
         axs[0].plot(ampl_modulation.modulated_result_signal.r_frequencies,
                     np.abs(ampl_modulation.modulated_result_signal.rfft_result_spectrum))
+        axs[0].set_ylabel("ам")
 
         axs[1].plot(freq_modulation.modulated_result_signal.r_frequencies,
                     np.abs(freq_modulation.modulated_result_signal.rfft_result_spectrum))
+        axs[1].set_ylabel("чм")
 
         axs[2].plot(phase_modulation.modulated_result_signal.r_frequencies,
                     np.abs(phase_modulation.modulated_result_signal.rfft_result_spectrum))
+        axs[2].set_ylabel("фм")
 
         for i in range(3):
-            axs[i].set_xlim(0, 60)
+            axs[i].set_xlim(0, 200)
 
         plt.show()
 
