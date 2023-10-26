@@ -116,6 +116,7 @@ class AmplitudeModulation(Modulation):
                                         frequency=self.synthesized_signal.frequency, amplitude=0)
 
         self.enveloping_signal.signal = np.abs(hilbert(self.synthesized_signal.signal))
+
         self.enveloping_signal.time_interval = self.synthesized_signal.time_interval
 
         m = max(np.abs(self.synthesized_signal.signal)) * 0.35
