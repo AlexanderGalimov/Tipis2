@@ -54,7 +54,8 @@ class DrawSignal:
                                               self.t_processor.modulations.get("phase_modulation"))
 
     def draw_synth_signal(self):
-        self.__draw_plots_synth_signal(self.t_processor.modulations.get("amplitude_modulation").synthesized_signal)
+        self.__draw_plots_synth_signal(self.t_processor.modulations.get("amplitude_modulation").synthesized_signal,
+                                       self.t_processor.modulations.get("amplitude_modulation").enveloping_signal)
 
     def draw_filtered_signal(self):
         self.__draw_plots_filtered_signal(self.t_processor.modulations.get("amplitude_modulation").filtered_signal)
@@ -81,12 +82,13 @@ class DrawSignal:
         plt.show()
 
     @staticmethod
-    def __draw_plots_synth_signal(synth_signal: Signal):
+    def __draw_plots_synth_signal(synth_signal: Signal, enveloping_signal: Signal):
         fig, axs = plt.subplots(nrows=1, ncols=1)
         fig.set_size_inches(15, 3)
-        fig.suptitle("синтезированный сигнал")
+        fig.suptitle("синтезированный сигнал и огибающая")
 
         axs.plot(synth_signal.time_interval, synth_signal.signal)
+        axs.plot(enveloping_signal.time_interval, enveloping_signal.signal)
 
         plt.show()
 

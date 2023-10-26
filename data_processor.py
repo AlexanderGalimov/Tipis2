@@ -11,16 +11,16 @@ class DataProcessor:
         self.init_task2()
 
     def init_task1(self):
-        Hs_1Hz = HarmonicSignal(start_time=0, end_time=5, time_step=0.001,
+        Hs_1Hz = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
                                 frequency=1, amplitude=1)
 
         Hs_2Hz = HarmonicSignal(start_time=0, end_time=5, time_step=0.001,
                                 frequency=2, amplitude=1)
 
-        Hs_4Hz = HarmonicSignal(start_time=0, end_time=5, time_step=0.001,
+        Hs_4Hz = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
                                 frequency=4, amplitude=1)
 
-        Hs_8Hz = HarmonicSignal(start_time=0, end_time=5, time_step=0.001,
+        Hs_8Hz = HarmonicSignal(start_time=0, end_time=1, time_step=0.001,
                                 frequency=8, amplitude=1)
 
         self.harmonic_signals.append(Hs_1Hz)
@@ -34,7 +34,7 @@ class DataProcessor:
         Ds_2Hz = DigitalSignal(start_time=0, end_time=5, time_step=0.001,
                                frequency=2, amplitude=1)
 
-        Ds_4Hz = DigitalSignal(start_time=0, end_time=5, time_step=0.001,
+        Ds_4Hz = DigitalSignal(start_time=0, end_time=1, time_step=0.001,
                                frequency=4, amplitude=1)
 
         Ds_8Hz = DigitalSignal(start_time=0, end_time=5, time_step=0.001,

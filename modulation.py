@@ -1,8 +1,7 @@
 import math
 
 import numpy as np
-from scipy import signal
-from scipy.signal import medfilt
+from scipy.signal import hilbert
 
 from signals import Signal
 
@@ -18,6 +17,7 @@ class Modulation:
                                                   frequency=self.main_signal.frequency, amplitude=0)
             self.synthesized_signal = None
             self.filtered_signal = None
+            self.enveloping_signal = None
 
         except KeyError:
             print("Key not found")
@@ -33,15 +33,16 @@ class Modulation:
         self.modulated_result_signal.count_full_spectrum()
 
     def cut_full_spectrum(self):
-        min_index = np.argmin(np.abs(self.modulated_result_signal.fft_result_spectrum))
-        max_index = np.argmax(np.abs(self.modulated_result_signal.fft_result_spectrum))
+        m = max(self.modulated_result_signal.fft_result_spectrum)
 
-        self.modulated_result_signal.fft_result_spectrum[min_index] = 0
-        self.modulated_result_signal.fft_result_spectrum[max_index] = 0
-
-        for i in range(len(self.modulated_result_signal.frequencies)):
-            if self.modulated_result_signal.frequencies[i] < self.modulated_result_signal.frequencies[max_index] / 2:
-                self.modulated_result_signal.frequencies[i] = 0
+        for i in range(len(self.modulated_result_signal.fft_result_spectrum)):
+            if np.abs(self.modulated_result_signal.fft_result_spectrum[i]) < 0.25 * m:
+                self.modulated_result_signal.fft_result_spectrum[i] = 0
+            else:
+                self.modulated_result_signal.fft_result_spectrum[i] = np.abs(
+                    self.modulated_result_signal.fft_result_spectrum[i])
+            if np.abs(self.modulated_result_signal.fft_result_spectrum[i]) == m:
+                self.modulated_result_signal.fft_result_spectrum[i] = 0
 
     def spectrum_synthesys(self):
         self.synthesized_signal = Signal(start_time=self.modulated_result_signal.start_time,
@@ -76,20 +77,6 @@ class FrequencyModulation(Modulation):
         self.count_r_spectrum()
 
     def count_signal(self):
-        # k = 100 * math.pi
-        #
-        # modeling_int = [0, ]
-        # for i in range(1, len(self.modeling_signal.time_interval)):
-        #     modeling_int.append(simps(self.modeling_signal.signal[:i], self.modeling_signal.time_interval[:i]))
-        #
-        # s_FM = []
-        # for (ti, m) in zip(self.modeling_signal.time_interval, modeling_int):
-        #     s_FM.append(self.main_signal.amplitude * math.sin(2 * math.pi * self.main_signal.frequency * ti + k * m))
-        #
-        # self.modulated_result_signal.signal = np.array(s_FM)
-        #
-        # self.modulated_result_signal.time_interval = self.main_signal.time_interval
-
         signal = []
         for i in range(len(self.main_signal.time_interval)):
             signal.append(
@@ -113,7 +100,6 @@ class AmplitudeModulation(Modulation):
         self.filter_signal()
 
     def count_signal(self):
-
         self.modulated_result_signal.signal = self.main_signal.signal * self.modeling_signal.signal
 
         self.modulated_result_signal.time_interval = self.main_signal.time_interval
@@ -124,16 +110,15 @@ class AmplitudeModulation(Modulation):
                                       time_step=self.modulated_result_signal.time_step,
                                       frequency=self.modulated_result_signal.frequency, amplitude=0)
 
-        # y = np.zeros_like(self.synthesized_signal.signal)
-        # win = 200
-        # for i in range(len(self.synthesized_signal.signal) - win + 1):
-        #     y[i] = np.mean(self.synthesized_signal.signal[i:i + win])
-        # s = 1.2 * np.mean(y)
+        self.enveloping_signal = Signal(start_time=self.synthesized_signal.start_time,
+                                        end_time=self.synthesized_signal.end_time,
+                                        time_step=self.synthesized_signal.time_step,
+                                        frequency=self.synthesized_signal.frequency, amplitude=0)
 
-        #self.filtered_signal.signal = np.array([1 if i >= s else 0 for i in y])
+        self.enveloping_signal.signal = np.abs(hilbert(self.synthesized_signal.signal))
+        self.enveloping_signal.time_interval = self.synthesized_signal.time_interval
 
-        sig = medfilt(self.synthesized_signal.signal, kernel_size=131)
-        s = 1.5 * np.mean(sig)
-        self.filtered_signal.signal = np.array([1 if i >= s else 0 for i in sig])
+        m = max(np.abs(self.synthesized_signal.signal)) * 0.35
+        self.filtered_signal.signal = np.array([1 if i > m else 0 for i in self.enveloping_signal.signal])
 
         self.filtered_signal.time_interval = self.synthesized_signal.time_interval
